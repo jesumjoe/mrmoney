@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:async';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -8,6 +9,10 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
+
+  final StreamController<String?> _onNotificationTap =
+      StreamController<String?>.broadcast();
+  Stream<String?> get onNotificationTap => _onNotificationTap.stream;
 
   Future<void> init() async {
     // Android initialization
@@ -31,9 +36,23 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Handle notification tap
+        _onNotificationTap.add(response.payload);
       },
     );
+
+    // Check if app was launched from notification
+    final NotificationAppLaunchDetails? notificationAppLaunchDetails =
+        await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+
+    if (notificationAppLaunchDetails != null &&
+        notificationAppLaunchDetails.didNotificationLaunchApp) {
+      // Delay slightly to ensure listeners are registered
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _onNotificationTap.add(
+          notificationAppLaunchDetails.notificationResponse?.payload,
+        );
+      });
+    }
   }
 
   Future<void> requestPermissions() async {

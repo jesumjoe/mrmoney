@@ -12,248 +12,159 @@ class AccountsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: NeoColors.background,
-      appBar: AppBar(
-        title: Text('Accounts', style: NeoStyle.bold(fontSize: 24)),
-        backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.analytics_outlined),
-            color: NeoColors.text,
-            onPressed: () {
-              // TODO: Analytics
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            color: NeoColors.text,
-            onPressed: () {
-              // TODO: More options
-            },
-          ),
-        ],
-      ),
-      body: Consumer<BankAccountProvider>(
-        builder: (context, provider, child) {
-          if (provider.accounts.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    size: 64,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No accounts added yet.',
-                    style: NeoStyle.regular(
-                      color: Colors.grey.shade600,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  NeoButton(
-                    onPressed: () => _showAddEditAccountDialog(context),
-                    text: 'Add Account',
-                    color: NeoColors.primary,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Group Accounts
-          final bankAndCash = provider.accounts
-              .where((a) => a.type == 'bank' || a.type == 'cash')
-              .toList();
-          final investments = provider.accounts
-              .where((a) => a.type == 'investment')
-              .toList();
-
-          final totalAssets = provider.totalBalance;
-          final totalLiabilities = 0.0;
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+    // Scaffold provided by HomeScreen
+    return Consumer<BankAccountProvider>(
+      builder: (context, provider, child) {
+        if (provider.accounts.isEmpty) {
+          return Center(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Summary Card
-                NeoCard(
-                  color: NeoColors.text, // Dark Slate / Navy
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Assets',
-                                style: NeoStyle.regular(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                NumberFormat.currency(
-                                  locale: 'en_IN',
-                                  symbol: '₹',
-                                ).format(totalAssets),
-                                style: NeoStyle.bold(
-                                  color: NeoColors.accent,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Liabilities',
-                                style: NeoStyle.regular(
-                                  color: Colors.grey.shade400,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                NumberFormat.currency(
-                                  locale: 'en_IN',
-                                  symbol: '₹',
-                                ).format(totalLiabilities),
-                                style: NeoStyle.bold(
-                                  color: NeoColors.error,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      const Divider(color: Colors.white24, thickness: 1),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Total',
-                            style: NeoStyle.bold(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            NumberFormat.currency(
-                              locale: 'en_IN',
-                              symbol: '₹',
-                            ).format(totalAssets - totalLiabilities),
-                            style: NeoStyle.bold(
-                              color: Colors.white,
-                              fontSize: 24,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: NeoColors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 48,
+                    color: NeoColors.text.withOpacity(0.2),
                   ),
                 ),
-                const SizedBox(height: 32),
-
-                // Accounts (Bank & Cash)
-                if (bankAndCash.isNotEmpty) ...[
-                  _buildSectionHeader(
-                    'Accounts',
-                    bankAndCash.fold(
-                      0,
-                      (sum, item) => sum + item.currentBalance,
-                    ),
+                const SizedBox(height: 16),
+                Text(
+                  'No accounts added yet',
+                  style: NeoStyle.bold(
+                    color: NeoColors.textSecondary,
+                    fontSize: 16,
                   ),
-                  const SizedBox(height: 12),
-                  ...bankAndCash.map(
-                    (account) => _buildAccountTile(context, account),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                // Investments
-                if (investments.isNotEmpty) ...[
-                  _buildSectionHeader(
-                    'Investments',
-                    investments.fold(
-                      0,
-                      (sum, item) => sum + item.currentBalance,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...investments.map(
-                    (account) => _buildAccountTile(context, account),
-                  ),
-                ],
+                ),
+                const SizedBox(height: 24),
+                NeoButton(
+                  onPressed: () => _showAddEditAccountDialog(context),
+                  text: 'Add Account',
+                  color: NeoColors.primary,
+                ),
               ],
             ),
           );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: NeoColors.secondary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: NeoColors.border, width: 2),
-        ),
-        onPressed: () => _showAddEditAccountDialog(context),
-        child: const Icon(Icons.add, color: NeoColors.text),
-      ),
+        }
+
+        // Group Accounts
+        final bankAndCash = provider.accounts
+            .where((a) => a.type == 'bank' || a.type == 'cash')
+            .toList();
+        final investments = provider.accounts
+            .where((a) => a.type == 'investment')
+            .toList();
+
+        final totalAssets = provider.totalBalance;
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(
+            24,
+            16,
+            24,
+            100,
+          ), // Reduced top padding
+          children: [
+            // Summary Card
+            NeoCard(
+              color: NeoColors.primary, // Black
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Assets',
+                    style: NeoStyle.regular(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    NumberFormat.currency(
+                      locale: 'en_IN',
+                      symbol: '₹',
+                      decimalDigits: 0,
+                    ).format(totalAssets),
+                    style: NeoStyle.bold(color: Colors.white, fontSize: 32),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // Accounts (Bank & Cash)
+            if (bankAndCash.isNotEmpty) ...[
+              _buildSectionHeader('Accounts'),
+              const SizedBox(height: 16),
+              ...bankAndCash.map(
+                (account) => _buildAccountTile(context, account),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Investments
+            if (investments.isNotEmpty) ...[
+              _buildSectionHeader('Investments'),
+              const SizedBox(height: 16),
+              ...investments.map(
+                (account) => _buildAccountTile(context, account),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Add Account Button
+            NeoButton(
+              text: 'Add New Account',
+              onPressed: () => _showAddEditAccountDialog(context),
+              color: Colors.transparent,
+              textColor: NeoColors.text,
+              outline: true,
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildSectionHeader(String title, double total) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title, style: NeoStyle.bold(fontSize: 18, color: NeoColors.text)),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: NeoStyle.box(
-            color: NeoColors.surface,
-            radius: 12,
-            noShadow: true,
-          ),
-          child: Text(
-            NumberFormat.currency(locale: 'en_IN', symbol: '₹').format(total),
-            style: NeoStyle.bold(fontSize: 14, color: NeoColors.text),
-          ),
-        ),
-      ],
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: NeoStyle.bold(fontSize: 18, color: NeoColors.text),
     );
   }
 
   Widget _buildAccountTile(BuildContext context, BankAccount account) {
     return NeoCard(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.zero,
+      padding: EdgeInsets.zero, // Padding handled by internal Padding widget
       onTap: () => _showAccountOptions(context, account),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: NeoStyle.circle(color: NeoColors.background),
-              child: Icon(
-                account.type == 'cash'
-                    ? Icons.money
-                    : (account.type == 'investment'
-                          ? Icons.trending_up
-                          : Icons.account_balance),
-                color: NeoColors.text,
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: NeoColors.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: NeoColors.border),
+              ),
+              child: Center(
+                child: Icon(
+                  account.type == 'cash'
+                      ? Icons.payments_outlined
+                      : (account.type == 'investment'
+                            ? Icons.trending_up_rounded
+                            : Icons.account_balance_rounded),
+                  color: NeoColors.text,
+                  size: 24,
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -262,16 +173,22 @@ class AccountsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(account.bankName, style: NeoStyle.bold(fontSize: 16)),
-                  const SizedBox(height: 4),
-                  account.type == 'bank'
-                      ? Text(
-                          '**** ${account.accountNumber}',
-                          style: NeoStyle.regular(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        )
-                      : HelperText(account.type),
+                  if (account.type == 'bank')
+                    Text(
+                      '**** ${account.accountNumber}',
+                      style: NeoStyle.regular(
+                        fontSize: 12,
+                        color: NeoColors.textSecondary,
+                      ),
+                    )
+                  else
+                    Text(
+                      account.type[0].toUpperCase() + account.type.substring(1),
+                      style: NeoStyle.regular(
+                        fontSize: 12,
+                        color: NeoColors.textSecondary,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -279,99 +196,90 @@ class AccountsScreen extends StatelessWidget {
               NumberFormat.currency(
                 locale: 'en_IN',
                 symbol: '₹',
+                decimalDigits: 0,
               ).format(account.currentBalance),
-              style: NeoStyle.bold(fontSize: 16, color: NeoColors.text),
+              style: NeoStyle.bold(fontSize: 16),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget HelperText(String type) {
-    String text = type[0].toUpperCase() + type.substring(1);
-    return Text(
-      text,
-      style: NeoStyle.regular(fontSize: 14, color: Colors.grey.shade600),
     );
   }
 
   void _showAccountOptions(BuildContext context, BankAccount account) {
-    showModalBottomSheet(
+    NeoStyle.showNeoDialog(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: NeoStyle.box(
-          color: Colors.white,
-          radius: 24,
-          noShadow: true,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit, color: NeoColors.text),
-              title: Text('Edit Account', style: NeoStyle.bold()),
-              onTap: () {
-                Navigator.pop(context);
-                _showAddEditAccountDialog(context, account: account);
-              },
+      title: account.bankName,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: Text('Edit Account', style: NeoStyle.bold(fontSize: 16)),
+            onTap: () {
+              Navigator.pop(context);
+              _showAddEditAccountDialog(context, account: account);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.message_outlined),
+            title: Text('SMS Rules', style: NeoStyle.bold(fontSize: 16)),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SmsConfigScreen(account: account),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline, color: NeoColors.error),
+            title: Text(
+              'Delete',
+              style: NeoStyle.bold(fontSize: 16, color: NeoColors.error),
             ),
-            ListTile(
-              leading: const Icon(Icons.message, color: NeoColors.text),
-              title: Text('Configure SMS Rules', style: NeoStyle.bold()),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SmsConfigScreen(account: account),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: NeoColors.error),
-              title: Text(
-                'Delete Account',
-                style: NeoStyle.bold(color: NeoColors.error),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                NeoStyle.showNeoDialog(
-                  context: context,
-                  title: 'Delete Account?',
-                  content: Text(
-                    'Are you sure you want to delete ${account.bankName}?',
-                    textAlign: TextAlign.center,
-                    style: NeoStyle.regular(),
-                  ),
-                  actions: [
-                    NeoButton(
-                      text: 'Cancel',
-                      color: Colors.transparent,
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const SizedBox(width: 12),
-                    NeoButton(
-                      text: 'Delete',
-                      color: NeoColors.error,
-                      onPressed: () {
-                        Provider.of<BankAccountProvider>(
-                          context,
-                          listen: false,
-                        ).deleteAccount(account);
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+            onTap: () {
+              Navigator.pop(context); // Close selection dialog
+              // Show confirmation
+              Future.delayed(const Duration(milliseconds: 200), () {
+                if (context.mounted) {
+                  _showDeleteConfirmation(context, account);
+                }
+              });
+            },
+          ),
+        ],
       ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, BankAccount account) {
+    NeoStyle.showNeoDialog(
+      context: context,
+      title: 'Delete Account?',
+      content: Text(
+        'Are you sure you want to delete ${account.bankName}? This action cannot be undone.',
+        textAlign: TextAlign.center,
+        style: NeoStyle.regular(color: NeoColors.textSecondary),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel', style: NeoStyle.bold(color: NeoColors.text)),
+        ),
+        TextButton(
+          onPressed: () {
+            Provider.of<BankAccountProvider>(
+              context,
+              listen: false,
+            ).deleteAccount(account);
+            Navigator.pop(context);
+          },
+          child: Text('Delete', style: NeoStyle.bold(color: NeoColors.error)),
+        ),
+      ],
     );
   }
 
@@ -400,7 +308,6 @@ class _AddEditAccountDialogState extends State<AddEditAccountDialog> {
   final _bankNameController = TextEditingController();
   final _accountNumberController = TextEditingController();
   final _balanceController = TextEditingController();
-  final _smsKeywordController = TextEditingController();
   String _type = 'bank';
   bool _isSmsParsingEnabled = true;
 
@@ -411,7 +318,6 @@ class _AddEditAccountDialogState extends State<AddEditAccountDialog> {
       _bankNameController.text = widget.account!.bankName;
       _accountNumberController.text = widget.account!.accountNumber;
       _balanceController.text = widget.account!.currentBalance.toString();
-      _smsKeywordController.text = widget.account!.smsKeyword;
       _isSmsParsingEnabled = widget.account!.isSmsParsingEnabled;
       _type = widget.account!.type;
     }
@@ -422,8 +328,38 @@ class _AddEditAccountDialogState extends State<AddEditAccountDialog> {
     _bankNameController.dispose();
     _accountNumberController.dispose();
     _balanceController.dispose();
-    _smsKeywordController.dispose();
     super.dispose();
+  }
+
+  void _saveAccount() {
+    if (_formKey.currentState!.validate()) {
+      final provider = Provider.of<BankAccountProvider>(context, listen: false);
+
+      if (widget.account != null) {
+        // Update
+        widget.account!.bankName = _bankNameController.text;
+        widget.account!.accountNumber = _accountNumberController.text;
+        widget.account!.currentBalance =
+            double.tryParse(_balanceController.text) ?? 0.0;
+        widget.account!.isSmsParsingEnabled = _isSmsParsingEnabled;
+        widget.account!.type = _type;
+
+        provider.updateAccount(widget.account!);
+      } else {
+        // Create
+        final account = BankAccount(
+          id: const Uuid().v4(),
+          bankName: _bankNameController.text,
+          accountNumber: _accountNumberController.text,
+          currentBalance: double.tryParse(_balanceController.text) ?? 0.0,
+          smsKeyword: '', // Optional/Removed for now
+          isSmsParsingEnabled: _isSmsParsingEnabled,
+          type: _type,
+        );
+        provider.addAccount(account);
+      }
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -440,7 +376,7 @@ class _AddEditAccountDialogState extends State<AddEditAccountDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                isEditing ? 'Edit Bank Account' : 'Add Bank Account',
+                isEditing ? 'Edit Account' : 'Add Account',
                 style: NeoStyle.bold(fontSize: 20),
                 textAlign: TextAlign.center,
               ),
@@ -448,16 +384,18 @@ class _AddEditAccountDialogState extends State<AddEditAccountDialog> {
               TextFormField(
                 controller: _bankNameController,
                 decoration: NeoStyle.inputDecoration(
-                  hintText: 'Bank Name (e.g. HDFC)',
+                  hintText: 'Account Name',
+                  prefixIcon: const Icon(Icons.account_balance_rounded),
                 ),
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Please enter bank name'
-                    : null,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                initialValue: _type,
-                decoration: NeoStyle.inputDecoration(hintText: 'Account Type'),
+                value: _type,
+                decoration: NeoStyle.inputDecoration(
+                  prefixIcon: const Icon(Icons.category_rounded),
+                ),
                 items: const [
                   DropdownMenuItem(value: 'bank', child: Text('Bank Account')),
                   DropdownMenuItem(value: 'cash', child: Text('Cash')),
@@ -473,33 +411,26 @@ class _AddEditAccountDialogState extends State<AddEditAccountDialog> {
                 TextFormField(
                   controller: _accountNumberController,
                   decoration: NeoStyle.inputDecoration(
-                    hintText: 'Account Number (Last 4)',
+                    hintText: 'Last 4 Digits',
+                    prefixIcon: const Icon(Icons.numbers_rounded),
                   ),
+                  maxLength: 4,
                   keyboardType: TextInputType.number,
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'Please enter account number'
+                  validator: (value) => value == null || value.length < 4
+                      ? 'Enter last 4 digits'
                       : null,
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _smsKeywordController,
-                  decoration: NeoStyle.inputDecoration(
-                    hintText: 'SMS Keyword (Optional)',
+                SwitchListTile(
+                  title: Text(
+                    'Enable SMS Parsing',
+                    style: NeoStyle.bold(fontSize: 14),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: NeoStyle.box(
-                    color: Colors.white,
-                    radius: NeoStyle.radius,
-                  ),
-                  child: SwitchListTile(
-                    title: Text('Enable SMS Parsing', style: NeoStyle.bold()),
-                    value: _isSmsParsingEnabled,
-                    activeThumbColor: NeoColors.primary,
-                    onChanged: (val) =>
-                        setState(() => _isSmsParsingEnabled = val),
-                  ),
+                  value: _isSmsParsingEnabled,
+                  activeColor: NeoColors.primary,
+                  onChanged: (val) =>
+                      setState(() => _isSmsParsingEnabled = val),
+                  contentPadding: EdgeInsets.zero,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -507,26 +438,29 @@ class _AddEditAccountDialogState extends State<AddEditAccountDialog> {
                 controller: _balanceController,
                 decoration: NeoStyle.inputDecoration(
                   hintText: 'Current Balance',
+                  prefixIcon: const Icon(Icons.currency_rupee_rounded),
                 ),
                 keyboardType: TextInputType.number,
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Please enter balance'
-                    : null,
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Required' : null,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  NeoButton(
-                    text: 'Cancel',
-                    color: Colors.transparent,
-                    onPressed: () => Navigator.pop(context),
+                  Expanded(
+                    child: NeoButton(
+                      text: 'Cancel',
+                      outline: true,
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  NeoButton(
-                    text: 'Save',
-                    color: NeoColors.primary,
-                    onPressed: _saveAccount,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: NeoButton(
+                      text: 'Save',
+                      color: NeoColors.primary,
+                      onPressed: _saveAccount,
+                    ),
                   ),
                 ],
               ),
@@ -535,38 +469,5 @@ class _AddEditAccountDialogState extends State<AddEditAccountDialog> {
         ),
       ),
     );
-  }
-
-  void _saveAccount() {
-    if (_formKey.currentState!.validate()) {
-      final provider = Provider.of<BankAccountProvider>(context, listen: false);
-
-      if (widget.account != null) {
-        // Update
-        widget.account!.bankName = _bankNameController.text;
-        widget.account!.accountNumber = _accountNumberController.text;
-        widget.account!.currentBalance =
-            double.tryParse(_balanceController.text) ?? 0.0;
-        widget.account!.smsKeyword = _smsKeywordController.text;
-        widget.account!.isSmsParsingEnabled = _isSmsParsingEnabled;
-        widget.account!.type = _type;
-
-        provider.updateAccount(widget.account!);
-      } else {
-        // Create
-        final account = BankAccount(
-          id: const Uuid().v4(),
-          bankName: _bankNameController.text,
-          accountNumber: _accountNumberController.text,
-          currentBalance: double.tryParse(_balanceController.text) ?? 0.0,
-          smsKeyword: _smsKeywordController.text,
-          isSmsParsingEnabled: _isSmsParsingEnabled,
-          type: _type,
-        );
-        provider.addAccount(account);
-      }
-
-      Navigator.pop(context);
-    }
   }
 }

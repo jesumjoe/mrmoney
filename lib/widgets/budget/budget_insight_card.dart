@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mrmoney/theme/neo_style.dart';
 
 class BudgetInsightCard extends StatelessWidget {
   final String title;
@@ -14,49 +15,49 @@ class BudgetInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: isWarning
-          ? Theme.of(context).colorScheme.errorContainer
-          : Theme.of(context).colorScheme.tertiaryContainer,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(
-              isWarning ? Icons.warning_amber : Icons.lightbulb,
-              color: Theme.of(context).colorScheme.onTertiaryContainer,
-              size: 28,
+    return NeoCard(
+      color: isWarning ? NeoColors.surface : Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isWarning
+                  ? NeoColors.error.withOpacity(0.1)
+                  : NeoColors.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Theme.of(context).colorScheme.onTertiaryContainer,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    message,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onTertiaryContainer.withOpacity(0.8),
-                    ),
-                  ),
-                ],
-              ),
+            child: Icon(
+              isWarning
+                  ? Icons.priority_high_rounded
+                  : Icons.lightbulb_outline_rounded,
+              color: isWarning ? NeoColors.error : NeoColors.primary,
+              size: 20,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: NeoStyle.bold(fontSize: 14, color: NeoColors.text),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: NeoStyle.regular(
+                    fontSize: 13,
+                    color: NeoColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

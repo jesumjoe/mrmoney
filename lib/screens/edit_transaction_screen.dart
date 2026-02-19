@@ -5,44 +5,41 @@ import 'package:uuid/uuid.dart';
 import 'package:mrmoney/providers/transaction_provider.dart';
 import 'package:mrmoney/providers/bank_account_provider.dart';
 import 'package:mrmoney/providers/friend_provider.dart';
-import 'package:mrmoney/providers/budget_provider.dart';
-import 'package:mrmoney/repositories/category_repository.dart';
 import 'package:mrmoney/models/transaction.dart';
 import 'package:mrmoney/models/transaction_type.dart';
 import 'package:mrmoney/models/bank_account.dart';
 import 'package:mrmoney/models/friend_loan.dart';
-import 'package:mrmoney/models/category.dart';
-import 'package:mrmoney/services/notification_service.dart';
-import 'package:mrmoney/services/budget_service.dart';
 import 'package:mrmoney/theme/neo_style.dart';
 
-enum TransactionMode { expense, income, lending }
+enum TransactionEditMode { expense, income, lending }
 
-class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+class EditTransactionScreen extends StatefulWidget {
+  final Transaction transaction;
+
+  const EditTransactionScreen({super.key, required this.transaction});
 
   @override
-  State<AddTransactionScreen> createState() => _AddTransactionScreenState();
+  State<EditTransactionScreen> createState() => _EditTransactionScreenState();
 }
 
-class _AddTransactionScreenState extends State<AddTransactionScreen> {
+class _EditTransactionScreenState extends State<EditTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _categoryController = TextEditingController();
-  // Friend Lending controllers
+  late TextEditingController _amountController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _categoryController;
+  // Lending specific
   final _newFriendController = TextEditingController();
 
-  DateTime _selectedDate = DateTime.now();
-  TransactionMode _selectedMode = TransactionMode.expense;
+  late DateTime _selectedDate;
+  TransactionEditMode _selectedMode = TransactionEditMode.expense;
   String? _selectedAccountId;
 
-  // Lending specific
+  // Lending State
+  FriendLoan? _existingLoan;
   String? _selectedFriend;
   bool _isNewFriend = false;
-  // true = I paid for them (Debit from my account, They owe me)
-  // false = They paid for me (I owe them, No impact on my bank unless settling)
-  bool _iPaid = true;
+  bool _iPaid =
+      true; // true = I paid (they owe me), false = They paid (I owe them)
 
   final List<String> _defaultCategories = [
     'Food',
@@ -55,6 +52,61 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     'Salary',
     'Other',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController(
+      text: widget.transaction.amount.toString(),
+    );
+    _descriptionController = TextEditingController(
+      text: widget.transaction.description,
+    );
+    _categoryController = TextEditingController(
+      text: widget.transaction.category,
+    );
+    _selectedDate = widget.transaction.date;
+    _selectedAccountId = widget.transaction.bankAccountId;
+
+    // Determine initial mode
+    if (widget.transaction.category == 'Lending') {
+      _selectedMode = TransactionEditMode.lending;
+      // Loan loading happens in didChangeDependencies
+    } else if (widget.transaction.type == TransactionType.credit) {
+      _selectedMode = TransactionEditMode.income;
+    } else {
+      _selectedMode = TransactionEditMode.expense;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_selectedMode == TransactionEditMode.lending && _existingLoan == null) {
+      // Try to find the associated loan
+      final friendProvider = Provider.of<FriendProvider>(
+        context,
+        listen: false,
+      );
+      try {
+        // Note: Accessing .loans directly might be empty if not loaded, but typically it is.
+        // We can use a safer approach if needed, but for now assuming provider is loaded.
+        _existingLoan = friendProvider.loans.firstWhere(
+          (l) => l.transactionId == widget.transaction.id,
+          orElse: () =>
+              throw Exception("Loan not found"), // Handled by try/catch
+        );
+
+        if (_existingLoan != null) {
+          _selectedFriend = _existingLoan!.friendName;
+          _iPaid = _existingLoan!.type == FriendLoanType.owed;
+        }
+      } catch (e) {
+        // No loan found, maybe manual category set to Lending?
+        // We start "fresh" for lending fields
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -79,23 +131,35 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
   }
 
-  void _saveTransaction() {
+  void _saveTransaction() async {
     if (_formKey.currentState!.validate()) {
       final amount = double.parse(_amountController.text);
-      final transactionId = const Uuid().v4();
+      final provider = Provider.of<TransactionProvider>(context, listen: false);
+      final accountProvider = Provider.of<BankAccountProvider>(
+        context,
+        listen: false,
+      );
+      final friendProvider = Provider.of<FriendProvider>(
+        context,
+        listen: false,
+      );
 
-      Transaction? transaction;
-      FriendLoan? friendLoan;
-
-      // Logic for Lending
-      if (_selectedMode == TransactionMode.lending) {
-        final friendProvider = Provider.of<FriendProvider>(
-          context,
-          listen: false,
+      // 1. Revert Old Balance Effect
+      if (widget.transaction.bankAccountId != null) {
+        bool wasCredit = widget.transaction.type == TransactionType.credit;
+        accountProvider.updateBalance(
+          widget.transaction.bankAccountId!,
+          widget.transaction.amount,
+          !wasCredit, // Revert
         );
+      }
+
+      // 2. Handle Friend Loan Updates
+      if (_selectedMode == TransactionEditMode.lending) {
         final friends = friendProvider.friendBalances.keys.toList();
         final isAddingNew = _isNewFriend || friends.isEmpty;
 
+        // Validate Friend
         String friendName = '';
         if (isAddingNew) {
           if (_newFriendController.text.isEmpty) {
@@ -115,237 +179,88 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           friendName = _selectedFriend!;
         }
 
-        if (_iPaid && _selectedAccountId == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please select a bank account since you paid'),
-            ),
-          );
-          return;
-        }
-
-        transaction = Transaction(
-          id: transactionId,
-          amount: amount,
-          type: _iPaid
-              ? TransactionType.debit
-              : TransactionType.credit, // Debit if I paid
-          category: 'Lending',
-          description: _descriptionController.text.isEmpty
-              ? 'Loan with $friendName'
-              : _descriptionController.text,
-          date: _selectedDate,
-          bankAccountId: _iPaid ? _selectedAccountId : null,
-        );
-
-        friendLoan = FriendLoan(
-          id: const Uuid().v4(),
-          friendName: friendName,
-          amount: amount,
-          type: _iPaid ? FriendLoanType.owed : FriendLoanType.owe,
-          description: _descriptionController.text,
-          date: _selectedDate,
-          transactionId: transactionId,
-        );
-      } else {
-        // Normal Transaction
-        if (_selectedAccountId == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select a bank account')),
-          );
-          return;
-        }
-
-        transaction = Transaction(
-          id: transactionId,
-          amount: amount,
-          type: _selectedMode == TransactionMode.income
-              ? TransactionType.credit
-              : TransactionType.debit,
-          category: _categoryController.text.isEmpty
-              ? 'Other'
-              : _categoryController.text,
-          description: _descriptionController.text,
-          date: _selectedDate,
-          bankAccountId: _selectedAccountId,
-        );
-      }
-
-      // Check Budget Warning
-      if (_selectedMode == TransactionMode.expense) {
-        _checkBudgetAndFinalize(transaction, friendLoan);
-      } else {
-        _finalizeSave(transaction, friendLoan);
-      }
-    }
-  }
-
-  void _checkBudgetAndFinalize(
-    Transaction transaction,
-    FriendLoan? friendLoan,
-  ) {
-    final categoryName = transaction.category;
-    final categoryRepo = Provider.of<CategoryRepository>(
-      context,
-      listen: false,
-    );
-    final txProvider = Provider.of<TransactionProvider>(context, listen: false);
-    final now = DateTime.now();
-
-    // 1. Check Category Limits
-    Category? category;
-    try {
-      category = categoryRepo.getAll().firstWhere(
-        (c) => c.name == categoryName,
-      );
-    } catch (e) {
-      // Category might not exist
-    }
-
-    if (category != null &&
-        category.budgetLimit != null &&
-        category.budgetLimit! > 0) {
-      final catSpent = txProvider.transactions
-          .where(
-            (t) =>
-                t.category == categoryName &&
-                t.type == TransactionType.debit &&
-                t.date.year == now.year &&
-                t.date.month == now.month,
-          )
-          .fold(0.0, (sum, t) => sum + t.amount);
-
-      final newTotal = catSpent + transaction.amount;
-      final limit = category.budgetLimit!;
-
-      if (newTotal > limit) {
-        NotificationService().showNotification(
-          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          title: "Category Limit Exceeded",
-          body:
-              "You exceeded your $categoryName budget by ₹${(newTotal - limit).toStringAsFixed(0)}.",
-        );
-        _showBudgetDialog(
-          context,
-          "⚠️ Category Limit Exceeded",
-          "This expense will exceed your $categoryName budget by ₹${(newTotal - limit).toStringAsFixed(0)}.\n\nLimit: ₹${limit.toStringAsFixed(0)}\nNew Total: ₹${newTotal.toStringAsFixed(0)}",
-          () => _checkGlobalSavingsGoal(transaction, friendLoan),
-        );
-        return;
-      } else if (newTotal > (limit * 0.8) && catSpent <= (limit * 0.8)) {
-        NotificationService().showNotification(
-          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          title: "Approaching Limit",
-          body: "You have used over 80% of your $categoryName budget.",
-        );
-        _showBudgetDialog(
-          context,
-          "⚠️ Approaching Category Limit",
-          "You have used over 80% of your $categoryName budget.\n\nLimit: ₹${limit.toStringAsFixed(0)}\nNew Total: ₹${newTotal.toStringAsFixed(0)}",
-          () => _checkGlobalSavingsGoal(transaction, friendLoan),
-        );
-        return;
-      }
-    }
-
-    _checkGlobalSavingsGoal(transaction, friendLoan);
-  }
-
-  void _checkGlobalSavingsGoal(
-    Transaction transaction,
-    FriendLoan? friendLoan,
-  ) {
-    final budgetProvider = Provider.of<BudgetProvider>(context, listen: false);
-    final txProvider = Provider.of<TransactionProvider>(context, listen: false);
-    final now = DateTime.now();
-
-    final goal = budgetProvider.savingsGoal;
-    if (goal > 0) {
-      final currentMonthTxs = txProvider.transactions
-          .where((t) => t.date.year == now.year && t.date.month == now.month)
-          .toList();
-
-      double income = 0;
-      double expense = 0;
-      for (var t in currentMonthTxs) {
-        if (t.type == TransactionType.credit) {
-          income += t.amount;
+        if (_existingLoan != null) {
+          // Update existing loan
+          _existingLoan!.amount = amount;
+          _existingLoan!.friendName = friendName;
+          _existingLoan!.type = _iPaid
+              ? FriendLoanType.owed
+              : FriendLoanType.owe;
+          _existingLoan!.description = _descriptionController.text;
+          _existingLoan!.date = _selectedDate;
+          await _existingLoan!.save();
         } else {
-          expense += t.amount;
+          // Create new loan linked to this transaction
+          final newLoan = FriendLoan(
+            id: const Uuid().v4(),
+            friendName: friendName,
+            amount: amount,
+            type: _iPaid ? FriendLoanType.owed : FriendLoanType.owe,
+            description: _descriptionController.text,
+            date: _selectedDate,
+            transactionId: widget.transaction.id,
+          );
+          await friendProvider.addLoan(newLoan);
+        }
+      } else {
+        // Not lending
+        // If we switched FROM lending, delete the old loan
+        if (_existingLoan != null) {
+          await friendProvider.deleteLoan(_existingLoan!);
         }
       }
 
-      final currentBalance = income - expense;
-      final result = budgetProvider.checkGlobalStatus(
-        currentBalance,
-        transaction.amount,
-      );
+      // 3. Update Transaction Fields
+      widget.transaction.amount = amount;
+      widget.transaction.description = _descriptionController.text;
+      widget.transaction.date = _selectedDate;
 
-      if (result.status != BudgetStatus.safe) {
-        final message = BudgetService.getBudgetWarningMessage(
-          status: result.status,
-          remainingAfterExpense: result.remainingSafeAmount,
-          savingsGoal: goal,
-        );
-        _showBudgetDialog(
-          context,
-          result.status == BudgetStatus.exceeded
-              ? "⚠️ Savings Goal Breach"
-              : "⚠️ Approach Warning",
-          message,
-          () => _finalizeSave(transaction, friendLoan),
-        );
-        return;
+      if (_selectedMode == TransactionEditMode.lending) {
+        widget.transaction.category = 'Lending';
+        widget.transaction.type = _iPaid
+            ? TransactionType.debit
+            : TransactionType.credit;
+        // If "They Paid", usually no bank impact, so maybe null?
+        // But AddTransactionScreen logic says:
+        // if _iPaid is true -> selectedAccount (Debit)
+        // if _iPaid is false -> null account (No bank impact)
+        widget.transaction.bankAccountId = _iPaid ? _selectedAccountId : null;
+      } else {
+        widget.transaction.category = _categoryController.text.isEmpty
+            ? 'Other'
+            : _categoryController.text;
+        widget.transaction.type = _selectedMode == TransactionEditMode.income
+            ? TransactionType.credit
+            : TransactionType.debit;
+        widget.transaction.bankAccountId = _selectedAccountId;
       }
+
+      // 4. Apply New Balance Effect
+      if (widget.transaction.bankAccountId != null) {
+        bool isCredit = widget.transaction.type == TransactionType.credit;
+        accountProvider.updateBalance(
+          widget.transaction.bankAccountId!,
+          widget.transaction.amount,
+          isCredit,
+        );
+      }
+
+      // 5. Save & Refresh
+      await widget.transaction.save();
+      provider.loadTransactions(); // Refresh list
+
+      if (mounted) Navigator.pop(context);
     }
-
-    _finalizeSave(transaction, friendLoan);
-  }
-
-  void _showBudgetDialog(
-    BuildContext context,
-    String title,
-    String message,
-    VoidCallback onConfirm,
-  ) {
-    NeoStyle.showNeoDialog(
-      context: context,
-      title: title,
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
-        ),
-        NeoButton(
-          text: "Proceed Anyway",
-          onPressed: () {
-            Navigator.pop(context);
-            onConfirm();
-          },
-          color: NeoColors.error,
-          textColor: Colors.white,
-        ),
-      ],
-    );
-  }
-
-  void _finalizeSave(Transaction transaction, FriendLoan? friendLoan) {
-    Provider.of<TransactionProvider>(
-      context,
-      listen: false,
-    ).addTransaction(transaction);
-    if (friendLoan != null) {
-      Provider.of<FriendProvider>(context, listen: false).addLoan(friendLoan);
-    }
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isLending = _selectedMode == TransactionEditMode.lending;
+    bool isSMS = widget.transaction.isFromSMS;
+
     return Scaffold(
       backgroundColor: NeoColors.background,
-      appBar: AppBar(title: const Text('Add Transaction')),
+      appBar: AppBar(title: const Text('Edit Transaction')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -363,7 +278,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               style: NeoStyle.bold(fontSize: 24),
               validator: (val) =>
-                  (val == null || val.isEmpty) ? 'Please enter amount' : null,
+                  (val == null || val.isEmpty) ? 'Enter amount' : null,
             ),
             const SizedBox(height: 16),
 
@@ -373,7 +288,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               children: [
                 Expanded(
                   child: _buildModeButton(
-                    mode: TransactionMode.expense,
+                    mode: TransactionEditMode.expense,
                     label: 'Expense',
                     icon: Icons.arrow_downward,
                     color: NeoColors.error,
@@ -382,7 +297,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildModeButton(
-                    mode: TransactionMode.income,
+                    mode: TransactionEditMode.income,
                     label: 'Income',
                     icon: Icons.arrow_upward,
                     color: NeoColors.success,
@@ -391,18 +306,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildModeButton(
-                    mode: TransactionMode.lending,
+                    mode: TransactionEditMode.lending,
                     label: 'Lending',
                     icon: Icons.people,
-                    color: NeoColors.text, // Neutral/Dark for lending
+                    color: NeoColors.text,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // LENDING SECTION
-            if (_selectedMode == TransactionMode.lending) ...[
+            // LENDING UI
+            if (isLending) ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: NeoStyle.box(color: NeoColors.surface),
@@ -415,8 +330,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       children: [
                         Expanded(
                           child: RadioListTile<bool>(
-                            title: const Text("I paid"),
-                            subtitle: const Text("(They owe)"),
+                            title: const Text("I Paid (They owe)"),
                             value: true,
                             groupValue: _iPaid,
                             onChanged: (val) => setState(() => _iPaid = val!),
@@ -425,8 +339,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                         Expanded(
                           child: RadioListTile<bool>(
-                            title: const Text("They paid"),
-                            subtitle: const Text("(I owe)"),
+                            title: const Text("They Paid (I owe)"),
                             value: false,
                             groupValue: _iPaid,
                             onChanged: (val) => setState(() => _iPaid = val!),
@@ -441,12 +354,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         final friends = provider.friendBalances.keys.toList();
                         return Column(
                           children: [
+                            // Dropdown for existing friends
                             if (friends.isNotEmpty && !_isNewFriend)
                               DropdownButtonFormField<String>(
                                 decoration: NeoStyle.inputDecoration(
                                   labelText: 'Select Friend',
                                 ),
-                                value: _selectedFriend,
+                                value: (friends.contains(_selectedFriend))
+                                    ? _selectedFriend
+                                    : null,
                                 items: friends
                                     .map(
                                       (f) => DropdownMenuItem(
@@ -459,16 +375,18 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     setState(() => _selectedFriend = val),
                               ),
 
+                            // Add New Toggle
                             if (friends.isNotEmpty && !_isNewFriend)
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
                                   onPressed: () =>
                                       setState(() => _isNewFriend = true),
-                                  child: const Text("+ Add New Friend"),
+                                  child: const Text(" + Add New User"),
                                 ),
                               ),
 
+                            // New Friend Input
                             if (friends.isEmpty || _isNewFriend)
                               TextFormField(
                                 controller: _newFriendController,
@@ -493,19 +411,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 16),
             ] else ...[
-              // Category Selection for Expense/Income
+              // CATEGORY UI (Only for Expense/Income)
               DropdownButtonFormField<String>(
                 decoration: NeoStyle.inputDecoration(labelText: 'Category'),
                 value: _defaultCategories.contains(_categoryController.text)
                     ? _categoryController.text
-                    : null,
+                    : 'Other',
                 items: _defaultCategories
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
                 onChanged: (val) =>
                     setState(() => _categoryController.text = val ?? ''),
-                validator: (val) =>
-                    val == null ? 'Please select a category' : null,
               ),
               const SizedBox(height: 16),
             ],
@@ -522,12 +438,23 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             const SizedBox(height: 16),
 
             // Bank Account
-            if (_selectedMode != TransactionMode.lending ||
-                (_selectedMode == TransactionMode.lending && _iPaid))
+            // If Lending & I Paid -> Need Bank Account
+            // If Lending & They Paid -> No Bank Account (usually)
+            // If Expense/Income -> Need Bank Account
+            if (!isLending || (isLending && _iPaid))
               Consumer<BankAccountProvider>(
                 builder: (context, provider, child) {
                   return DropdownButtonFormField<String>(
-                    decoration: NeoStyle.inputDecoration(labelText: 'Account'),
+                    decoration: NeoStyle.inputDecoration(
+                      labelText: 'Account',
+                      // Add Lock Icon if SMS
+                      suffixIcon: isSMS
+                          ? const Tooltip(
+                              message: "Detected from SMS",
+                              child: Icon(Icons.lock, size: 18),
+                            )
+                          : null,
+                    ),
                     value: _selectedAccountId,
                     items: provider.accounts.map((BankAccount account) {
                       return DropdownMenuItem<String>(
@@ -539,13 +466,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                         ),
                       );
                     }).toList(),
-                    onChanged: (val) =>
-                        setState(() => _selectedAccountId = val),
-                    validator: (val) {
-                      if (_selectedMode == TransactionMode.lending && !_iPaid)
-                        return null;
-                      return val == null ? 'Please select an account' : null;
-                    },
+                    onChanged: isSMS
+                        ? null // Disable if SMS
+                        : (val) => setState(() => _selectedAccountId = val),
                   );
                 },
               ),
@@ -562,7 +485,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             const SizedBox(height: 24),
 
             // Save
-            NeoButton(text: 'Save Transaction', onPressed: _saveTransaction),
+            NeoButton(text: 'Save Changes', onPressed: _saveTransaction),
           ],
         ),
       ),
@@ -570,7 +493,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Widget _buildModeButton({
-    required TransactionMode mode,
+    required TransactionEditMode mode,
     required String label,
     required IconData icon,
     required Color color,
@@ -578,7 +501,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final isSelected = _selectedMode == mode;
     return InkWell(
       onTap: () {
-        setState(() => _selectedMode = mode);
+        setState(() {
+          _selectedMode = mode;
+          // Reset category text if moving away from Lending
+          if (_selectedMode != TransactionEditMode.lending &&
+              _categoryController.text == 'Lending') {
+            _categoryController.text = 'Other';
+          }
+        });
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -587,9 +517,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected
-                ? color
-                : NeoColors.border, // Use NeoColors.border for unselected
+            color: isSelected ? color : NeoColors.border,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -601,7 +529,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               size: 24,
             ),
             const SizedBox(height: 4),
-            // Use FittedBox to ensure text scales down if needed
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(

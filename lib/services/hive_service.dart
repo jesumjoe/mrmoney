@@ -10,13 +10,20 @@ class HiveService {
   static Future<void> init() async {
     await Hive.initFlutter();
 
-    Hive.registerAdapter(BankAccountAdapter()); // TypeId: 0
-    Hive.registerAdapter(TransactionAdapter()); // TypeId: 1
-    Hive.registerAdapter(TransactionTypeAdapter()); // TypeId: 2
-    Hive.registerAdapter(CategoryAdapter()); // TypeId: 3
-    Hive.registerAdapter(InvestmentAdapter()); // TypeId: 4
-    Hive.registerAdapter(FriendLoanTypeAdapter()); // TypeId: 5
-    Hive.registerAdapter(FriendLoanAdapter()); // TypeId: 6
+    if (!Hive.isAdapterRegistered(0))
+      Hive.registerAdapter(BankAccountAdapter()); // TypeId: 0
+    if (!Hive.isAdapterRegistered(1))
+      Hive.registerAdapter(TransactionAdapter()); // TypeId: 1
+    if (!Hive.isAdapterRegistered(2))
+      Hive.registerAdapter(TransactionTypeAdapter()); // TypeId: 2
+    if (!Hive.isAdapterRegistered(3))
+      Hive.registerAdapter(CategoryAdapter()); // TypeId: 3
+    if (!Hive.isAdapterRegistered(4))
+      Hive.registerAdapter(InvestmentAdapter()); // TypeId: 4
+    if (!Hive.isAdapterRegistered(5))
+      Hive.registerAdapter(FriendLoanTypeAdapter()); // TypeId: 5
+    if (!Hive.isAdapterRegistered(6))
+      Hive.registerAdapter(FriendLoanAdapter()); // TypeId: 6
 
     await Hive.openBox<BankAccount>('bank_accounts');
     await Hive.openBox<Transaction>('transactions');

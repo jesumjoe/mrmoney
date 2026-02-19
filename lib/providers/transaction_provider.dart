@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:mrmoney/models/transaction.dart';
+import 'package:hive/hive.dart';
 import 'package:mrmoney/models/transaction_type.dart';
 import 'package:mrmoney/repositories/transaction_repository.dart';
 import 'package:mrmoney/providers/bank_account_provider.dart';
@@ -11,8 +13,36 @@ class TransactionProvider with ChangeNotifier {
   List<Transaction> _transactions = [];
   List<Transaction> get transactions => _transactions;
 
+  StreamSubscription? _boxSubscription;
+
   TransactionProvider(this._repository, this._accountProvider) {
     loadTransactions();
+    _initListener();
+  }
+
+  void _initListener() {
+    _boxSubscription = _repository.box.watch().listen((_) {
+      loadTransactions();
+    });
+  }
+
+  Future<void> refresh() async {
+    // Close and Re-open box to force sync from disk (Background Service writes)
+    if (_repository.box.isOpen) await _repository.box.close();
+
+    final newBox = await Hive.openBox<Transaction>('transactions');
+    _repository.box = newBox;
+
+    _boxSubscription?.cancel();
+    _initListener();
+
+    loadTransactions();
+  }
+
+  @override
+  void dispose() {
+    _boxSubscription?.cancel();
+    super.dispose();
   }
 
   void updateAccountProvider(BankAccountProvider provider) {
@@ -58,6 +88,59 @@ class TransactionProvider with ChangeNotifier {
     loadTransactions();
   }
 
+  List<Transaction> processTransactions({
+    required List<Transaction> transactions,
+    TransactionType? filterType,
+    SortOrder sortOrder = SortOrder.newestFirst,
+  }) {
+    // 1. Filter by Type
+    var filtered = transactions;
+    if (filterType != null) {
+      filtered = filtered.where((t) => t.type == filterType).toList();
+    }
+
+    // 2. Sort
+    filtered.sort((a, b) {
+      switch (sortOrder) {
+        case SortOrder.newestFirst:
+          return b.date.compareTo(a.date);
+        case SortOrder.oldestFirst:
+          return a.date.compareTo(b.date);
+        case SortOrder.highestAmount:
+          return b.amount.compareTo(a.amount);
+        case SortOrder.lowestAmount:
+          return a.amount.compareTo(b.amount);
+      }
+    });
+
+    return filtered;
+  }
+
+  List<Transaction> getTransactionsForMonth(DateTime month) {
+    return _transactions.where((t) {
+      return t.date.year == month.year && t.date.month == month.month;
+    }).toList();
+  }
+
+  Map<String, double> calculateMonthlyTotals(List<Transaction> transactions) {
+    double totalIncome = 0;
+    double totalExpense = 0;
+
+    for (var t in transactions) {
+      if (t.type == TransactionType.credit) {
+        totalIncome += t.amount;
+      } else {
+        totalExpense += t.amount;
+      }
+    }
+
+    return {
+      'income': totalIncome,
+      'expense': totalExpense,
+      'total': totalIncome - totalExpense,
+    };
+  }
+
   List<Transaction> get recentTransactions {
     return _transactions.take(10).toList();
   }
@@ -75,3 +158,5 @@ class TransactionProvider with ChangeNotifier {
         .fold(0, (sum, t) => sum + t.amount);
   }
 }
+
+enum SortOrder { newestFirst, oldestFirst, highestAmount, lowestAmount }

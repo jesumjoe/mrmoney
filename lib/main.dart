@@ -16,6 +16,7 @@ import 'package:mrmoney/providers/transaction_provider.dart';
 import 'package:mrmoney/providers/settings_provider.dart';
 import 'package:mrmoney/providers/budget_provider.dart';
 import 'package:mrmoney/screens/home_screen.dart';
+import 'package:mrmoney/screens/transactions_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +41,29 @@ void main() async {
   // Init SMS Listener
   final smsService = SmsBackgroundService();
   await smsService.init();
+
+  // Listen for Notification Taps
+  notificationService.onNotificationTap.listen((payload) async {
+    if (payload != null) {
+      // Refresh Data first
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        // Show loading indicator or splash? Ideally we just wait.
+        await Provider.of<TransactionProvider>(
+          context,
+          listen: false,
+        ).refresh();
+        await Provider.of<BankAccountProvider>(
+          context,
+          listen: false,
+        ).refresh();
+      }
+
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+      );
+    }
+  });
 
   runApp(
     MultiProvider(
@@ -70,8 +94,34 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data when app comes to foreground
+      Provider.of<TransactionProvider>(context, listen: false).refresh();
+      Provider.of<BankAccountProvider>(context, listen: false).refresh();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +135,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         scaffoldBackgroundColor: NeoColors.background,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: NeoColors.border,
+          seedColor: NeoColors.primary,
           primary: NeoColors.primary,
           secondary: NeoColors.secondary,
           surface: NeoColors.surface,
@@ -103,48 +153,42 @@ class MyApp extends StatelessWidget {
           centerTitle: true,
           titleTextStyle: TextStyle(
             color: NeoColors.text,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
             fontFamily: 'Inter',
           ),
           iconTheme: IconThemeData(color: NeoColors.text, size: 24),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
+          fillColor: NeoColors.surface,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
             vertical: 16,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(NeoStyle.radius),
-            borderSide: const BorderSide(
-              color: NeoColors.border,
-              width: NeoStyle.borderWidth,
-            ),
+            borderSide: const BorderSide(color: NeoColors.border, width: 1.0),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(NeoStyle.radius),
-            borderSide: const BorderSide(
-              color: NeoColors.border,
-              width: NeoStyle.borderWidth,
-            ),
+            borderSide: const BorderSide(color: NeoColors.border, width: 1.0),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(NeoStyle.radius),
-            borderSide: const BorderSide(
-              color: NeoColors.primary,
-              width: NeoStyle.borderWidth,
-            ),
+            borderSide: const BorderSide(color: NeoColors.primary, width: 1.0),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(NeoStyle.radius),
-            borderSide: const BorderSide(
-              color: NeoColors.error,
-              width: NeoStyle.borderWidth,
-            ),
+            borderSide: const BorderSide(color: NeoColors.error, width: 1.0),
           ),
-          hintStyle: GoogleFonts.inter(color: Colors.grey.shade600),
+          hintStyle: GoogleFonts.inter(color: NeoColors.textSecondary),
+        ),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: ZoomPageTransitionsBuilder(),
+            TargetPlatform.iOS: ZoomPageTransitionsBuilder(),
+          },
         ),
       ),
       home: const HomeScreen(),

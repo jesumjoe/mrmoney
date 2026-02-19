@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mrmoney/providers/settings_provider.dart';
 import 'package:mrmoney/screens/category_management_screen.dart';
+import 'package:mrmoney/screens/debug_log_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -95,8 +96,26 @@ class SettingsScreen extends StatelessWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('Mr. Money'),
-            subtitle: Text('Version 1.0.0'),
+            subtitle: const Text('Version 1.0.0'),
           ),
+
+          const Divider(),
+
+          // Debug
+          _buildSectionHeader(context, 'Debug & Logs'),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('View Background Logs'),
+            subtitle: const Text('Check SMS processing logs'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DebugLogScreen()),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );

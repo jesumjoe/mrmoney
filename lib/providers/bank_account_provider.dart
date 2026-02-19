@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:mrmoney/models/bank_account.dart';
+import 'package:hive/hive.dart';
 import 'package:mrmoney/repositories/bank_account_repository.dart';
 
 class BankAccountProvider with ChangeNotifier {
@@ -14,8 +16,35 @@ class BankAccountProvider with ChangeNotifier {
   double get totalBalance =>
       _accounts.fold(0, (sum, item) => sum + item.currentBalance);
 
+  StreamSubscription? _boxSubscription;
+
   BankAccountProvider(this._repository) {
     loadAccounts();
+    _initListener();
+  }
+
+  void _initListener() {
+    _boxSubscription = _repository.box.watch().listen((_) {
+      loadAccounts();
+    });
+  }
+
+  Future<void> refresh() async {
+    if (_repository.box.isOpen) await _repository.box.close();
+
+    final newBox = await Hive.openBox<BankAccount>('bank_accounts');
+    _repository.box = newBox;
+
+    _boxSubscription?.cancel();
+    _initListener();
+
+    loadAccounts();
+  }
+
+  @override
+  void dispose() {
+    _boxSubscription?.cancel();
+    super.dispose();
   }
 
   void loadAccounts() {

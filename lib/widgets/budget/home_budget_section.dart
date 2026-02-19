@@ -15,7 +15,6 @@ class HomeBudgetSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Access CategoryRepository without listening (it's a repository, likely not notifying directly or handled by BudgetProvider)
     final catRepo = Provider.of<CategoryRepository>(context, listen: false);
 
     return Consumer2<BudgetProvider, TransactionProvider>(
@@ -23,7 +22,6 @@ class HomeBudgetSection extends StatelessWidget {
         final goal = budgetProvider.savingsGoal;
         if (goal <= 0) return const SizedBox.shrink();
 
-        // Calculate current month's totals
         final now = DateTime.now();
         final currentMonthTxs = txProvider.transactions
             .where((t) => t.date.year == now.year && t.date.month == now.month)
@@ -38,33 +36,28 @@ class HomeBudgetSection extends StatelessWidget {
             income += t.amount;
           } else {
             expense += t.amount;
-            // Track category spending
             final catName = t.category;
             categorySpent[catName] = (categorySpent[catName] ?? 0) + t.amount;
           }
         }
 
-        // Project spending
         final projected = BudgetService.calculateProjectedSpending(
           currentSpent: expense,
           currentMonth: now,
         );
 
-        // Safe to spend logic
         final currentBalance = income - expense;
         final safeToSpend = currentBalance - goal;
         final isSafe = safeToSpend > 0;
 
-        // Warnings
         final warnings = <Widget>[];
 
-        // 1. Safe to spend warning
         if (safeToSpend < 0) {
           warnings.add(
             BudgetInsightCard(
-              title: "Goal at Risk!",
+              title: "Goal at Risk",
               message:
-                  "⚠️ You have dipped into your savings by ₹${safeToSpend.abs().toStringAsFixed(0)}.",
+                  "You have dipped into your savings by ₹${safeToSpend.abs().toStringAsFixed(0)}.",
               isWarning: true,
             ),
           );
@@ -73,13 +66,12 @@ class HomeBudgetSection extends StatelessWidget {
             BudgetInsightCard(
               title: "Approaching Limit",
               message:
-                  "⚠️ You only have ₹${safeToSpend.toStringAsFixed(0)} left before touching your savings.",
+                  "Only ₹${safeToSpend.toStringAsFixed(0)} left before touching your savings.",
               isWarning: true,
             ),
           );
         }
 
-        // 2. Projected warning (General)
         if (currentBalance > 0 && (income - projected) < goal) {
           final potentialShortfall = goal - (income - projected);
           if (potentialShortfall > 0) {
@@ -87,7 +79,7 @@ class HomeBudgetSection extends StatelessWidget {
               BudgetInsightCard(
                 title: "Projected Shortfall",
                 message:
-                    "📉 At this rate, you might miss your goal by ₹${potentialShortfall.toStringAsFixed(0)}.",
+                    "At this rate, you might miss your goal by ₹${potentialShortfall.toStringAsFixed(0)}.",
                 isWarning: true,
               ),
             );
@@ -97,78 +89,142 @@ class HomeBudgetSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'BUDGET & GOALS',
-              style: NeoStyle.bold(color: Colors.black.withOpacity(0.5)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Budget Overview', style: NeoStyle.bold(fontSize: 18)),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: NeoStyle.box(
+                    color: NeoColors.surface,
+                    radius: 20,
+                    noShadow: true,
+                  ),
+                  child: Text(
+                    DateFormat('MMMM').format(now),
+                    style: NeoStyle.bold(
+                      fontSize: 12,
+                      color: NeoColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // Settings Goal Card (Neo Style)
+            // Goal Card
             NeoCard(
-              color: NeoColors.indigo,
+              color: Colors.white,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Monthly Goal',
-                        style: NeoStyle.bold(color: Colors.white70),
+                        'Monthly Savings Goal',
+                        style: NeoStyle.regular(
+                          fontSize: 14,
+                          color: NeoColors.textSecondary,
+                        ),
                       ),
-                      const Icon(Icons.flag, color: Colors.white, size: 28),
+                      Icon(Icons.flag_rounded, color: NeoColors.text, size: 20),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   Text(
                     NumberFormat.currency(
                       locale: 'en_IN',
                       symbol: '₹',
+                      decimalDigits: 0,
                     ).format(goal),
-                    style: NeoStyle.bold(fontSize: 28, color: Colors.white),
+                    style: NeoStyle.bold(fontSize: 24),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Progress Bar
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double progress =
+                          (currentBalance > 0 && currentBalance >= goal
+                                  ? 1.0
+                                  : (currentBalance > 0
+                                        ? currentBalance / goal
+                                        : 0.0))
+                              .clamp(0.0, 1.0);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                isSafe ? 'On Track' : 'Off Track',
+                                style: NeoStyle.bold(
+                                  fontSize: 12,
+                                  color: isSafe
+                                      ? NeoColors.success
+                                      : NeoColors.error,
+                                ),
+                              ),
+                              Text(
+                                '${(progress * 100).toStringAsFixed(0)}%',
+                                style: NeoStyle.bold(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Stack(
+                            children: [
+                              Container(
+                                height: 8,
+                                width: constraints.maxWidth,
+                                decoration: BoxDecoration(
+                                  color: NeoColors.surface,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 500),
+                                height: 8,
+                                width: constraints.maxWidth * progress,
+                                decoration: BoxDecoration(
+                                  color: isSafe
+                                      ? NeoColors.primary
+                                      : NeoColors.error,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
-                  // Progress Bar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: currentBalance > 0 && currentBalance >= goal
-                          ? 1.0
-                          : (currentBalance > 0 ? currentBalance / goal : 0.0),
-                      color: isSafe ? NeoColors.mint : NeoColors.salmon,
-                      backgroundColor: Colors.white24,
-                      minHeight: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSafe ? NeoColors.mint : NeoColors.salmon,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black, width: 2),
-                    ),
-                    child: Text(
-                      isSafe
-                          ? 'Safe: ₹${safeToSpend.toStringAsFixed(0)} left'
-                          : 'Over by ₹${safeToSpend.abs().toStringAsFixed(0)}',
-                      style: NeoStyle.bold(fontSize: 12, color: Colors.black),
+                  Text(
+                    isSafe
+                        ? 'Safe: ₹${safeToSpend.toStringAsFixed(0)} left'
+                        : 'Over by ₹${safeToSpend.abs().toStringAsFixed(0)}',
+                    style: NeoStyle.regular(
+                      fontSize: 12,
+                      color: NeoColors.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-            // Warnings
             if (warnings.isNotEmpty) ...[
               ...warnings,
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
             ],
 
-            // Category Budgets
             ...catRepo.getAll().where((c) => (c.budgetLimit ?? 0) > 0).map((c) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),

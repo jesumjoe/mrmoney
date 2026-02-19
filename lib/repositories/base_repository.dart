@@ -1,7 +1,7 @@
 import 'package:hive/hive.dart';
 
 abstract class BaseRepository<T extends HiveObject> {
-  final Box<T> box;
+  Box<T> box;
 
   BaseRepository(this.box);
 

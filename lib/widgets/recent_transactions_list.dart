@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:mrmoney/providers/transaction_provider.dart';
 import 'package:mrmoney/models/transaction_type.dart';
 import 'package:mrmoney/theme/neo_style.dart';
+import 'package:mrmoney/screens/edit_transaction_screen.dart';
 
 class RecentTransactionsList extends StatelessWidget {
   const RecentTransactionsList({super.key});
@@ -16,58 +17,99 @@ class RecentTransactionsList extends StatelessWidget {
 
         if (transactions.isEmpty) {
           return Center(
-            child: Text(
-              'No transactions yet.',
-              style: NeoStyle.bold(color: Colors.grey),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text(
+                'No transactions yet.',
+                style: NeoStyle.regular(color: NeoColors.textSecondary),
+              ),
             ),
           );
         }
 
-        return ListView.builder(
+        return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: transactions.length,
+          separatorBuilder: (context, index) => const Divider(
+            height: 1,
+            color: NeoColors.border,
+            indent: 16,
+            endIndent: 16,
+          ),
           itemBuilder: (context, index) {
             final transaction = transactions[index];
             final isCredit = transaction.type == TransactionType.credit;
 
-            return NeoCard(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              color: Colors.white,
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isCredit ? NeoColors.mint : NeoColors.salmon,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.black, width: 2),
+            return InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        EditTransactionScreen(transaction: transaction),
                   ),
-                  child: Icon(
-                    isCredit ? Icons.arrow_downward : Icons.arrow_upward,
-                    color: Colors.black,
-                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 0,
+                  vertical: 16,
                 ),
-                title: Text(
-                  transaction.category,
-                  style: NeoStyle.bold(fontSize: 16),
-                ),
-                subtitle: Text(
-                  DateFormat('MMM d, h:mm a').format(transaction.date),
-                  style: TextStyle(
-                    color: Colors.black.withOpacity(0.7),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-                trailing: Text(
-                  '${isCredit ? '+' : '-'} ₹${transaction.amount.toStringAsFixed(2)}',
-                  style: NeoStyle.bold(
-                    fontSize: 16,
-                    color: isCredit ? Colors.black : Colors.black,
-                  ),
+                child: Row(
+                  children: [
+                    // Icon
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: NeoColors.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          isCredit
+                              ? Icons.arrow_downward_rounded
+                              : Icons.arrow_upward_rounded,
+                          color: isCredit ? NeoColors.success : NeoColors.text,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    // Details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            transaction.category,
+                            style: NeoStyle.bold(fontSize: 16),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            DateFormat(
+                              'MMM d, h:mm a',
+                            ).format(transaction.date),
+                            style: NeoStyle.regular(
+                              color: NeoColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Amount
+                    Text(
+                      '${isCredit ? '+' : '-'} ₹${transaction.amount.toStringAsFixed(0)}',
+                      style: NeoStyle.bold(
+                        fontSize: 16,
+                        color: isCredit ? NeoColors.success : NeoColors.text,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );

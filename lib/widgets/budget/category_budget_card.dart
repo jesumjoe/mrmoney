@@ -19,14 +19,12 @@ class CategoryBudgetCard extends StatelessWidget {
     }
 
     final limit = category.budgetLimit!;
-    final spent = this.spent; // Access class property
-    // Handle division by zero if limit is 0 (though checked above)
     final progress = (spent / limit).clamp(0.0, 1.0);
     final isOver = spent > limit;
 
     return NeoCard(
       color: Colors.white,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,25 +37,40 @@ class CategoryBudgetCard extends StatelessWidget {
                 '${(progress * 100).toStringAsFixed(0)}%',
                 style: NeoStyle.bold(
                   fontSize: 12,
-                  color: isOver ? NeoColors.salmon : Colors.grey.shade700,
+                  color: isOver ? NeoColors.error : NeoColors.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: Colors.grey.shade200,
-              color: isOver ? NeoColors.salmon : NeoColors.primary,
-              minHeight: 8,
+              backgroundColor: NeoColors.surface,
+              color: isOver ? NeoColors.error : NeoColors.primary,
+              minHeight: 6,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '₹${spent.toStringAsFixed(0)} / ₹${limit.toStringAsFixed(0)}',
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '₹${spent.toStringAsFixed(0)} spent',
+                style: NeoStyle.regular(
+                  fontSize: 12,
+                  color: NeoColors.textSecondary,
+                ),
+              ),
+              Text(
+                'Limit: ₹${limit.toStringAsFixed(0)}',
+                style: NeoStyle.regular(
+                  fontSize: 12,
+                  color: NeoColors.textSecondary,
+                ),
+              ),
+            ],
           ),
         ],
       ),

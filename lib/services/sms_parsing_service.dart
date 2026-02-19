@@ -57,6 +57,11 @@ class SmsParsingService {
       r'Debited\s+by\s+([0-9,.]+)\s+.*Top\s+.*VPA\s+(.*)',
       caseSensitive: false,
     ),
+    // Paid thru UPI
+    RegExp(
+      r'(?:INR|Rs\.?)\s*([0-9,.]+)\s+paid\s+thru\s+A\/C\s+([0-9X]+).*',
+      caseSensitive: false,
+    ),
   ];
 
   static final List<RegExp> _creditPatterns = [
@@ -78,6 +83,16 @@ class SmsParsingService {
     // Generic Credit
     RegExp(
       r'Credited\s+by\s+([0-9,.]+)\s+.*Info:\s*(.*)',
+      caseSensitive: false,
+    ),
+    // Received via UPI
+    RegExp(
+      r'Received\s+(?:INR|Rs\.?)\s*([0-9,.]+)\s+from\s+(.*)\s+in\s+A\/c\s+([0-9X]+).*',
+      caseSensitive: false,
+    ),
+    // Deposited
+    RegExp(
+      r'(?:INR|Rs\.?)\s*([0-9,.]+)\s+deposited\s+to\s+A\/c\s+([0-9X]+).*',
       caseSensitive: false,
     ),
   ];
@@ -108,10 +123,13 @@ class SmsParsingService {
     // Determine Type (Debit/Credit)
     bool isDebit =
         body.toLowerCase().contains('debit') ||
-        body.toLowerCase().contains('dr');
+        body.toLowerCase().contains('dr') ||
+        body.toLowerCase().contains('paid');
     bool isCredit =
         body.toLowerCase().contains('credit') ||
-        body.toLowerCase().contains('cr');
+        body.toLowerCase().contains('cr') ||
+        body.toLowerCase().contains('deposited') ||
+        body.toLowerCase().contains('received');
 
     if (!isDebit && !isCredit) return null; // Likely not a transaction SMS
 
@@ -142,7 +160,10 @@ class SmsParsingService {
             } else if (RegExp(r'[0-9X]+').hasMatch(group) &&
                 group.length > 2 &&
                 (accountStr == 'Unknown' ||
-                    accountStr == matchedAccount?.accountNumber)) {
+                    // Robust check: does one end with the other?
+                    (matchedAccount != null &&
+                        (matchedAccount.accountNumber.endsWith(group) ||
+                            group.endsWith(matchedAccount.accountNumber))))) {
               // If we already know the account, we might not need this, but good to verify
               if (group.toUpperCase().contains('X') || group.length >= 3) {
                 accountStr = group;

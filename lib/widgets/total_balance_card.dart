@@ -13,77 +13,74 @@ class TotalBalanceCard extends StatelessWidget {
     return Consumer2<BankAccountProvider, TransactionProvider>(
       builder: (context, bankProvider, transactionProvider, child) {
         final totalBalance = bankProvider.totalBalance;
-        final todayExpense = transactionProvider.todayExpense;
+        // Let's stick to what was there:
+        final expenseValue = transactionProvider.todayExpense;
+
         final formattedBalance = NumberFormat.currency(
           locale: 'en_IN',
           symbol: '₹',
+          decimalDigits: 0,
         ).format(totalBalance);
+
         final formattedExpense = NumberFormat.currency(
           locale: 'en_IN',
           symbol: '₹',
-        ).format(todayExpense);
+          decimalDigits: 0,
+        ).format(expenseValue);
 
         return NeoCard(
-          color: NeoColors.yellow, // Bright yellow for attention
+          color: NeoColors.primary, // Black background
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'TOTAL BALANCE',
-                style: NeoStyle.bold(
+                'Total Balance',
+                style: NeoStyle.regular(
                   fontSize: 14,
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.white.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 formattedBalance,
-                style: NeoStyle.bold(fontSize: 32, color: Colors.black),
+                style: NeoStyle.bold(
+                  fontSize: 36,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    // Wrap in Expanded to avoid overflow
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.black, width: 2),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.arrow_downward,
-                            color: Colors.black,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            // Wrap text
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'TODAY',
-                                  style: NeoStyle.bold(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                                Text(
-                                  formattedExpense,
-                                  style: NeoStyle.bold(fontSize: 16),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
                     ),
+                    child: const Icon(
+                      Icons.arrow_outward_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Today\'s Spend',
+                        style: NeoStyle.regular(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      Text(
+                        formattedExpense,
+                        style: NeoStyle.bold(fontSize: 16, color: Colors.white),
+                      ),
+                    ],
                   ),
                 ],
               ),
