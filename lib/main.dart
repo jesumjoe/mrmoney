@@ -17,6 +17,7 @@ import 'package:mrmoney/providers/settings_provider.dart';
 import 'package:mrmoney/providers/budget_provider.dart';
 import 'package:mrmoney/screens/home_screen.dart';
 import 'package:mrmoney/screens/transactions_screen.dart';
+import 'package:mrmoney/screens/edit_transaction_screen.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:animations/animations.dart';
 
@@ -61,11 +62,29 @@ void main() async {
 
         await txProvider.refresh();
         await bankProvider.refresh();
-      }
 
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (_) => const TransactionsScreen()),
-      );
+        try {
+          final transaction = txProvider.transactions.firstWhere(
+            (t) => t.id == payload,
+          );
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => EditTransactionScreen(transaction: transaction),
+            ),
+          );
+        } catch (e) {
+          debugPrint("Transaction not found for ID: $payload");
+          // Fallback to Transactions Screen if not found
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: const Text('Transactions')),
+                body: const TransactionsScreen(),
+              ),
+            ),
+          );
+        }
+      }
     }
   });
 
@@ -127,9 +146,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void _handleWidgetLaunch(Uri? uri) {
     if (uri != null) {
-      // Navigate to Transactions Screen
       navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: const Text('Transactions')),
+            body: const TransactionsScreen(),
+          ),
+        ),
       );
     }
   }
