@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:intl/intl.dart';
 import 'package:mrmoney/models/transaction.dart';
 import 'package:hive/hive.dart';
 import 'package:mrmoney/models/transaction_type.dart';
 import 'package:mrmoney/repositories/transaction_repository.dart';
 import 'package:mrmoney/providers/bank_account_provider.dart';
+import 'package:mrmoney/services/home_widget_service.dart';
 
 class TransactionProvider with ChangeNotifier {
   final TransactionRepository _repository;
@@ -54,6 +56,7 @@ class TransactionProvider with ChangeNotifier {
     // Sort by date desc
     _transactions.sort((a, b) => b.date.compareTo(a.date));
     notifyListeners();
+    HomeWidgetService.updateWidgetData(_transactions);
   }
 
   Future<void> addTransaction(Transaction transaction) async {
@@ -139,6 +142,20 @@ class TransactionProvider with ChangeNotifier {
       'expense': totalExpense,
       'total': totalIncome - totalExpense,
     };
+  }
+
+  static Map<String, List<Transaction>> groupTransactionsByDate(
+    List<Transaction> transactions,
+  ) {
+    final Map<String, List<Transaction>> grouped = {};
+    for (var t in transactions) {
+      final key = DateFormat('yyyy-MM-dd').format(t.date);
+      if (!grouped.containsKey(key)) {
+        grouped[key] = [];
+      }
+      grouped[key]!.add(t);
+    }
+    return grouped;
   }
 
   List<Transaction> get recentTransactions {

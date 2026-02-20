@@ -267,18 +267,24 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
           padding: const EdgeInsets.all(16.0),
           children: [
             // Amount Input
-            TextFormField(
-              controller: _amountController,
-              decoration: NeoStyle.inputDecoration(
-                labelText: 'Amount',
-                prefixText: '₹',
+            Hero(
+              tag: 'amount_${widget.transaction.id}',
+              child: Material(
+                color: Colors.transparent,
+                child: TextFormField(
+                  controller: _amountController,
+                  decoration: NeoStyle.inputDecoration(
+                    labelText: 'Amount',
+                    prefixText: '₹',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: NeoStyle.bold(fontSize: 24),
+                  validator: (val) =>
+                      (val == null || val.isEmpty) ? 'Enter amount' : null,
+                ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              style: NeoStyle.bold(fontSize: 24),
-              validator: (val) =>
-                  (val == null || val.isEmpty) ? 'Enter amount' : null,
             ),
             const SizedBox(height: 16),
 

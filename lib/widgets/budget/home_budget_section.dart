@@ -4,8 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:mrmoney/providers/budget_provider.dart';
 import 'package:mrmoney/providers/transaction_provider.dart';
 import 'package:mrmoney/repositories/category_repository.dart';
-import 'package:mrmoney/services/budget_service.dart';
-import 'package:mrmoney/models/transaction_type.dart';
 import 'package:mrmoney/theme/neo_style.dart';
 import 'package:mrmoney/widgets/budget/budget_insight_card.dart';
 import 'package:mrmoney/widgets/budget/category_budget_card.dart';
@@ -19,72 +17,13 @@ class HomeBudgetSection extends StatelessWidget {
 
     return Consumer2<BudgetProvider, TransactionProvider>(
       builder: (context, budgetProvider, txProvider, child) {
+        // We use txProvider as a rebuild trigger, but data comes from budgetProvider.
+        final summary = budgetProvider.budgetSummary;
         final goal = budgetProvider.savingsGoal;
-        if (goal <= 0) return const SizedBox.shrink();
+
+        if (goal <= 0 || summary == null) return const SizedBox.shrink();
 
         final now = DateTime.now();
-        final currentMonthTxs = txProvider.transactions
-            .where((t) => t.date.year == now.year && t.date.month == now.month)
-            .toList();
-
-        double income = 0;
-        double expense = 0;
-        final Map<String, double> categorySpent = {};
-
-        for (var t in currentMonthTxs) {
-          if (t.type == TransactionType.credit) {
-            income += t.amount;
-          } else {
-            expense += t.amount;
-            final catName = t.category;
-            categorySpent[catName] = (categorySpent[catName] ?? 0) + t.amount;
-          }
-        }
-
-        final projected = BudgetService.calculateProjectedSpending(
-          currentSpent: expense,
-          currentMonth: now,
-        );
-
-        final currentBalance = income - expense;
-        final safeToSpend = currentBalance - goal;
-        final isSafe = safeToSpend > 0;
-
-        final warnings = <Widget>[];
-
-        if (safeToSpend < 0) {
-          warnings.add(
-            BudgetInsightCard(
-              title: "Goal at Risk",
-              message:
-                  "You have dipped into your savings by ₹${safeToSpend.abs().toStringAsFixed(0)}.",
-              isWarning: true,
-            ),
-          );
-        } else if (safeToSpend < (goal * 0.2)) {
-          warnings.add(
-            BudgetInsightCard(
-              title: "Approaching Limit",
-              message:
-                  "Only ₹${safeToSpend.toStringAsFixed(0)} left before touching your savings.",
-              isWarning: true,
-            ),
-          );
-        }
-
-        if (currentBalance > 0 && (income - projected) < goal) {
-          final potentialShortfall = goal - (income - projected);
-          if (potentialShortfall > 0) {
-            warnings.add(
-              BudgetInsightCard(
-                title: "Projected Shortfall",
-                message:
-                    "At this rate, you might miss your goal by ₹${potentialShortfall.toStringAsFixed(0)}.",
-                isWarning: true,
-              ),
-            );
-          }
-        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -149,10 +88,11 @@ class HomeBudgetSection extends StatelessWidget {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final double progress =
-                          (currentBalance > 0 && currentBalance >= goal
+                          (summary.currentBalance > 0 &&
+                                      summary.currentBalance >= goal
                                   ? 1.0
-                                  : (currentBalance > 0
-                                        ? currentBalance / goal
+                                  : (summary.currentBalance > 0
+                                        ? summary.currentBalance / goal
                                         : 0.0))
                               .clamp(0.0, 1.0);
 
@@ -163,10 +103,10 @@ class HomeBudgetSection extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                isSafe ? 'On Track' : 'Off Track',
+                                summary.isSafe ? 'On Track' : 'Off Track',
                                 style: NeoStyle.bold(
                                   fontSize: 12,
-                                  color: isSafe
+                                  color: summary.isSafe
                                       ? NeoColors.success
                                       : NeoColors.error,
                                 ),
@@ -193,7 +133,7 @@ class HomeBudgetSection extends StatelessWidget {
                                 height: 8,
                                 width: constraints.maxWidth * progress,
                                 decoration: BoxDecoration(
-                                  color: isSafe
+                                  color: summary.isSafe
                                       ? NeoColors.primary
                                       : NeoColors.error,
                                   borderRadius: BorderRadius.circular(4),
@@ -207,9 +147,9 @@ class HomeBudgetSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    isSafe
-                        ? 'Safe: ₹${safeToSpend.toStringAsFixed(0)} left'
-                        : 'Over by ₹${safeToSpend.abs().toStringAsFixed(0)}',
+                    summary.isSafe
+                        ? 'Safe: ₹${summary.safeToSpend.toStringAsFixed(0)} left'
+                        : 'Over by ₹${summary.safeToSpend.abs().toStringAsFixed(0)}',
                     style: NeoStyle.regular(
                       fontSize: 12,
                       color: NeoColors.textSecondary,
@@ -220,9 +160,17 @@ class HomeBudgetSection extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            if (warnings.isNotEmpty) ...[
-              ...warnings,
-              const SizedBox(height: 24),
+            if (summary.insights.isNotEmpty) ...[
+              ...summary.insights.map(
+                (insight) => Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: BudgetInsightCard(
+                    title: insight.title,
+                    message: insight.message,
+                    isWarning: insight.isWarning,
+                  ),
+                ),
+              ),
             ],
 
             ...catRepo.getAll().where((c) => (c.budgetLimit ?? 0) > 0).map((c) {
@@ -230,7 +178,7 @@ class HomeBudgetSection extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: CategoryBudgetCard(
                   category: c,
-                  spent: categorySpent[c.name] ?? 0,
+                  spent: summary.categorySpent[c.name] ?? 0,
                 ),
               );
             }),

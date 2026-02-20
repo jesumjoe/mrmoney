@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mrmoney/theme/neo_style.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class MonthlySummaryCard extends StatelessWidget {
   final double income;
@@ -40,6 +41,11 @@ class MonthlySummaryCard extends StatelessWidget {
           ),
         ],
       ),
+    ).animate().fade().slideY(
+      begin: -0.2,
+      end: 0,
+      curve: Curves.easeOutQuad,
+      duration: 400.ms,
     );
   }
 

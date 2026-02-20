@@ -17,6 +17,8 @@ import 'package:mrmoney/providers/settings_provider.dart';
 import 'package:mrmoney/providers/budget_provider.dart';
 import 'package:mrmoney/screens/home_screen.dart';
 import 'package:mrmoney/screens/transactions_screen.dart';
+import 'package:home_widget/home_widget.dart';
+import 'package:animations/animations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,15 +50,17 @@ void main() async {
       // Refresh Data first
       final context = navigatorKey.currentContext;
       if (context != null) {
-        // Show loading indicator or splash? Ideally we just wait.
-        await Provider.of<TransactionProvider>(
+        final txProvider = Provider.of<TransactionProvider>(
           context,
           listen: false,
-        ).refresh();
-        await Provider.of<BankAccountProvider>(
+        );
+        final bankProvider = Provider.of<BankAccountProvider>(
           context,
           listen: false,
-        ).refresh();
+        );
+
+        await txProvider.refresh();
+        await bankProvider.refresh();
       }
 
       navigatorKey.currentState?.push(
@@ -87,7 +91,14 @@ void main() async {
           },
         ),
         Provider<CategoryRepository>.value(value: categoryRepo),
-        ChangeNotifierProvider(create: (_) => BudgetProvider(categoryRepo)),
+        ChangeNotifierProxyProvider<TransactionProvider, BudgetProvider>(
+          create: (_) => BudgetProvider(categoryRepo),
+          update: (context, transactionProvider, previous) {
+            final provider = previous ?? BudgetProvider(categoryRepo);
+            provider.updateTransactions(transactionProvider);
+            return provider;
+          },
+        ),
       ],
       child: const MyApp(),
     ),
@@ -106,6 +117,21 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _checkForWidgetLaunch();
+  }
+
+  void _checkForWidgetLaunch() {
+    HomeWidget.initiallyLaunchedFromHomeWidget().then(_handleWidgetLaunch);
+    HomeWidget.widgetClicked.listen(_handleWidgetLaunch);
+  }
+
+  void _handleWidgetLaunch(Uri? uri) {
+    if (uri != null) {
+      // Navigate to Transactions Screen
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+      );
+    }
   }
 
   @override
@@ -186,8 +212,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
-            TargetPlatform.android: ZoomPageTransitionsBuilder(),
-            TargetPlatform.iOS: ZoomPageTransitionsBuilder(),
+            TargetPlatform.android: SharedAxisPageTransitionsBuilder(
+              transitionType: SharedAxisTransitionType.scaled,
+            ),
+            TargetPlatform.iOS: SharedAxisPageTransitionsBuilder(
+              transitionType: SharedAxisTransitionType.scaled,
+            ),
           },
         ),
       ),

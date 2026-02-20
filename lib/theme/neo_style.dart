@@ -236,7 +236,7 @@ class NeoCard extends StatelessWidget {
   }
 }
 
-class NeoButton extends StatelessWidget {
+class NeoButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
   final Color? color;
@@ -255,35 +255,68 @@ class NeoButton extends StatelessWidget {
   });
 
   @override
+  State<NeoButton> createState() => _NeoButtonState();
+}
+
+class _NeoButtonState extends State<NeoButton> {
+  bool _isPressed = false;
+
+  void _handleTapDown(TapDownDetails details) {
+    if (widget.onPressed == null) return;
+    setState(() => _isPressed = true);
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    if (widget.onPressed == null) return;
+    setState(() => _isPressed = false);
+  }
+
+  void _handleTapCancel() {
+    if (widget.onPressed == null) return;
+    setState(() => _isPressed = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bgColor = outline ? Colors.transparent : (color ?? NeoColors.primary);
-    final fgColor = outline
-        ? (textColor ?? NeoColors.text)
-        : (textColor ?? Colors.white);
+    final bgColor = widget.outline
+        ? Colors.transparent
+        : (widget.color ?? NeoColors.primary);
+    final fgColor = widget.outline
+        ? (widget.textColor ?? NeoColors.text)
+        : (widget.textColor ?? Colors.white);
 
     return SizedBox(
-      width: width,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          foregroundColor: fgColor,
-          disabledBackgroundColor: Colors.grey.shade200,
-          disabledForegroundColor: Colors.grey.shade400,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(NeoStyle.radius),
-            side: outline
-                ? const BorderSide(color: NeoColors.border, width: 1)
-                : BorderSide.none,
+      width: widget.width,
+      child: GestureDetector(
+        onTapDown: _handleTapDown,
+        onTapUp: _handleTapUp,
+        onTapCancel: _handleTapCancel,
+        onTap: widget.onPressed,
+        child: AnimatedScale(
+          scale: _isPressed ? 0.95 : 1.0,
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeInOut,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+              color: widget.onPressed != null ? bgColor : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(NeoStyle.radius),
+              border: widget.outline
+                  ? Border.all(color: NeoColors.border, width: 1)
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              widget.text,
+              style: NeoStyle.bold(
+                fontSize: 16,
+                color: widget.onPressed != null
+                    ? fgColor
+                    : Colors.grey.shade400,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
-          shadowColor: Colors.transparent,
-        ),
-        child: Text(
-          text,
-          style: NeoStyle.bold(fontSize: 16, color: fgColor),
-          textAlign: TextAlign.center,
         ),
       ),
     );

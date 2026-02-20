@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:mrmoney/services/home_widget_service.dart';
 
 Future<void> _log(String message) async {
   try {
@@ -86,6 +87,9 @@ void backgroundMessageHandler(SmsMessage message) async {
       );
 
       await transactionBox.add(transaction);
+
+      // Update Home Widget
+      await HomeWidgetService.updateWidgetData(transactionBox.values.toList());
 
       // 4. Update Account Balance
       if (accountId != null) {
