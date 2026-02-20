@@ -60,7 +60,8 @@
         </LinearLayout>
     </LinearLayout>
 
-    <View
+    <!-- Generic View is NOT supported in RemoteViews, using an empty TextView instead as a divider -->
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="12dp"

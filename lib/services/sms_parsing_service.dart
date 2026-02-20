@@ -31,36 +31,43 @@ class SmsParsingService {
     RegExp(
       r'UPI\s*debit:(?:INR|Rs\.?)\s*([0-9,.]+),.*A\/c\s+([0-9X]+).*',
       caseSensitive: false,
+      dotAll: true,
     ),
     // Canara: An amount of INR 55.00 has been DEBITED to your account XXX584 ...
     RegExp(
       r'An\s+amount\s+of\s+(?:INR|Rs\.?)\s*([0-9,.]+)\s+has\s+been\s+DEBITED\s+to\s+your\s+account\s+([0-9X]+).*',
       caseSensitive: false,
+      dotAll: true,
     ),
     // HDFC: Debited INR 500.00 from A/c XX1234 on 22-01-25. Info: AMAZON PAY
     RegExp(
       r'Debited\s+(?:INR|Rs\.?)\s*([0-9,.]+)\s+from\s+.*A\/c\s+([0-9X]+).+Info:\s*(.*)',
       caseSensitive: false,
+      dotAll: true,
     ),
     // SBI: Txn of INR 500.00 done on A/C ending 1234 at AMAZON
     RegExp(
       r'Txn\s+of\s+(?:INR|Rs\.?)\s*([0-9,.]+)\s+done\s+on\s+A\/C\s+ending\s+([0-9X]+).+at\s+(.*)',
       caseSensitive: false,
+      dotAll: true,
     ),
     // ICICI: Acct XX1234 debited with INR 500.00 on 22-Jan. Info: UPI-12345
     RegExp(
       r'Acct\s+([0-9X]+)\s+debited\s+with\s+(?:INR|Rs\.?)\s*([0-9,.]+).+Info:\s*(.*)',
       caseSensitive: false,
+      dotAll: true,
     ),
     // Generic UPI
     RegExp(
       r'Debited\s+by\s+([0-9,.]+)\s+.*Top\s+.*VPA\s+(.*)',
       caseSensitive: false,
+      dotAll: true,
     ),
     // Paid thru UPI
     RegExp(
       r'(?:INR|Rs\.?)\s*([0-9,.]+)\s+paid\s+thru\s+A\/C\s+([0-9X]+).*',
       caseSensitive: false,
+      dotAll: true,
     ),
   ];
 
@@ -69,31 +76,37 @@ class SmsParsingService {
     RegExp(
       r'UPI\s*Credit:(?:INR|Rs\.?)\s*([0-9,.]+)\s+in\s+A\/c\s+([0-9X]+).*',
       caseSensitive: false,
+      dotAll: true,
     ),
     // Canara: Your a/c no. XX2584 has been credited with Rs.20090.00 ... from a/c no. XX4258
     RegExp(
       r'Your\s+a\/c\s+no\.\s+([0-9X]+)\s+has\s+been\s+credited\s+with\s+(?:INR|Rs\.?)\s*([0-9,.]+).*',
       caseSensitive: false,
+      dotAll: true,
     ),
     // HDFC: Credited INR 500.00 to A/c XX1234
     RegExp(
       r'Credited\s+(?:INR|Rs\.?)\s*([0-9,.]+)\s+to\s+.*A\/c\s+([0-9X]+).+Info:\s*(.*)',
       caseSensitive: false,
+      dotAll: true,
     ),
     // Generic Credit
     RegExp(
       r'Credited\s+by\s+([0-9,.]+)\s+.*Info:\s*(.*)',
       caseSensitive: false,
+      dotAll: true,
     ),
     // Received via UPI
     RegExp(
       r'Received\s+(?:INR|Rs\.?)\s*([0-9,.]+)\s+from\s+(.*)\s+in\s+A\/c\s+([0-9X]+).*',
       caseSensitive: false,
+      dotAll: true,
     ),
     // Deposited
     RegExp(
       r'(?:INR|Rs\.?)\s*([0-9,.]+)\s+deposited\s+to\s+A\/c\s+([0-9X]+).*',
       caseSensitive: false,
+      dotAll: true,
     ),
   ];
 

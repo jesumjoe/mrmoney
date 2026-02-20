@@ -99,28 +99,39 @@ class DailyTransactionsList extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
-                      const Spacer(),
-                      // Daily Income
-                      if (dailyIncome > 0)
-                        Text(
-                          NumberFormat('#,##0').format(dailyIncome),
-                          style: const TextStyle(
-                            color: NeoColors.primary,
-                            fontSize: 14,
-                          ),
-                        ),
-                      if (dailyIncome > 0 && dailyExpense > 0)
-                        const SizedBox(width: 8),
+                      // Daily Income & Expense
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (dailyIncome > 0)
+                              Flexible(
+                                child: Text(
+                                  NumberFormat('#,##0').format(dailyIncome),
+                                  style: const TextStyle(
+                                    color: NeoColors.primary,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            if (dailyIncome > 0 && dailyExpense > 0)
+                              const SizedBox(width: 8),
 
-                      // Daily Expense
-                      if (dailyExpense > 0)
-                        Text(
-                          NumberFormat('#,##0').format(dailyExpense),
-                          style: const TextStyle(
-                            color: NeoColors.error,
-                            fontSize: 14,
-                          ),
+                            if (dailyExpense > 0)
+                              Flexible(
+                                child: Text(
+                                  NumberFormat('#,##0').format(dailyExpense),
+                                  style: const TextStyle(
+                                    color: NeoColors.error,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -129,61 +140,65 @@ class DailyTransactionsList extends StatelessWidget {
                 // Transactions for the day
                 ...dailyTransactions.map((t) {
                   final isCredit = t.type == TransactionType.credit;
-                  return InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => EditTransactionScreen(transaction: t),
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                EditTransactionScreen(transaction: t),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              t.category,
-                              style: const TextStyle(
-                                color: NeoColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              t.description.isNotEmpty
-                                  ? t.description
-                                  : 'Cash/Bank',
-                              style: const TextStyle(
-                                color: NeoColors.textSecondary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Hero(
-                            tag: 'amount_${t.id}',
-                            child: Material(
-                              color: Colors.transparent,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
                               child: Text(
-                                '₹${NumberFormat('#,##0.00').format(t.amount)}',
-                                style: TextStyle(
-                                  color: isCredit
-                                      ? NeoColors.success
-                                      : NeoColors.error,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                t.category,
+                                style: const TextStyle(
+                                  color: NeoColors.textSecondary,
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                t.description.isNotEmpty
+                                    ? t.description
+                                    : 'Cash/Bank',
+                                style: const TextStyle(
+                                  color: NeoColors.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Hero(
+                              tag: 'amount_${t.id}',
+                              child: Material(
+                                color: Colors.transparent,
+                                child: Text(
+                                  '₹${NumberFormat('#,##0.00').format(t.amount)}',
+                                  style: TextStyle(
+                                    color: isCredit
+                                        ? NeoColors.success
+                                        : NeoColors.error,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );

@@ -33,16 +33,25 @@ class HomeWidgetService {
       }
     }
 
-    await HomeWidget.saveWidgetData<double>('daily_spent', dailySpent);
-    await HomeWidget.saveWidgetData<double>('daily_received', dailyReceived);
-    await HomeWidget.saveWidgetData<int>('pending_count', pendingCount);
+    await HomeWidget.saveWidgetData<String>(
+      'daily_spent',
+      dailySpent.toStringAsFixed(2),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'daily_received',
+      dailyReceived.toStringAsFixed(2),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'pending_count',
+      pendingCount.toString(),
+    );
 
     await HomeWidget.updateWidget(
       name: androidWidgetName,
       iOSName: iOSWidgetName,
     );
-    /* print(
+    print(
       "Widget Updated: Spent: $dailySpent, Received: $dailyReceived, Pending: $pendingCount",
-    ); */
+    );
   }
 }

@@ -133,23 +133,74 @@ class SmsBackgroundService {
     );
   }
 
-  void _onForegroundMessage(SmsMessage message) {
+  void _onForegroundMessage(SmsMessage message) async {
     // When app is open, we can directly process or just show notification too.
     if (message.body == null) return;
 
     final parser = SmsParsingService();
-    // Pass empty list for accounts in background/foreground for now.
-    // TODO: Initialize Hive to access custom rules in background.
-    final parsed = parser.parseSms(message.body!, DateTime.now(), []);
+
+    // In foreground, we can potentially access the already open box
+    List<BankAccount> accounts = [];
+    try {
+      if (Hive.isBoxOpen('bank_accounts')) {
+        accounts = Hive.box<BankAccount>('bank_accounts').values.toList();
+      }
+    } catch (e) {
+      print("Error accessing bank accounts in foreground: $e");
+    }
+
+    final parsed = parser.parseSms(message.body!, DateTime.now(), accounts);
 
     if (parsed != null) {
+      // SAVE THE TRANSACTION
+      final transactionBox = Hive.box<Transaction>('transactions');
+
+      String? accountId;
+      // Attempt to match account (Foreground logic)
+      if (parsed.accountLastDigits != 'Unknown') {
+        try {
+          final account = accounts.firstWhere((a) {
+            return parsed.accountLastDigits.endsWith(a.accountNumber) ||
+                a.accountNumber.endsWith(parsed.accountLastDigits);
+          });
+          accountId = account.id;
+        } catch (_) {}
+      }
+
+      final transaction = Transaction(
+        id: const Uuid().v4(),
+        amount: parsed.amount,
+        type: parsed.type,
+        category: 'Uncategorized',
+        description: parsed.merchant ?? 'SMS Transaction',
+        date: parsed.date,
+        bankAccountId: accountId,
+        isFromSMS: true,
+      );
+
+      await transactionBox.add(transaction);
+
+      // Update Account Balance
+      if (accountId != null && Hive.isBoxOpen('bank_accounts')) {
+        final accountBox = Hive.box<BankAccount>('bank_accounts');
+        final account = accountBox.values.firstWhere((a) => a.id == accountId);
+        if (parsed.type == TransactionType.credit) {
+          account.currentBalance += parsed.amount;
+        } else {
+          account.currentBalance -= parsed.amount;
+        }
+        await account.save();
+      }
+
+      // Update Widget
+      await HomeWidgetService.updateWidgetData(transactionBox.values.toList());
+
       NotificationService().showTransactionNotification(
         id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
         title: 'New Transaction Detected',
         body:
             '${parsed.type.name.toUpperCase()}: ₹${parsed.amount} at ${parsed.merchant ?? "Unknown"}',
-        payload:
-            '${parsed.amount}|${parsed.type.name}|${parsed.accountLastDigits}|${parsed.merchant}|${parsed.date.toIso8601String()}',
+        payload: transaction.id,
       );
     }
   }
