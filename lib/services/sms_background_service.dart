@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:mrmoney/services/home_widget_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 Future<void> _log(String message) async {
   try {
@@ -126,6 +127,16 @@ class SmsBackgroundService {
   Future<void> init() async {
     bool? permissionsGranted = await telephony.requestPhoneAndSmsPermissions;
     if (permissionsGranted != true) return;
+
+    // Additionally request Phone State for reliable background broadcasts on Android
+    try {
+      if (Platform.isAndroid) {
+        final status = await Permission.phone.status;
+        if (!status.isGranted) {
+          await Permission.phone.request();
+        }
+      }
+    } catch (_) {}
 
     telephony.listenIncomingSms(
       onNewMessage: _onForegroundMessage,
